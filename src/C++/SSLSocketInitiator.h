@@ -117,64 +117,71 @@
 #ifndef FIX_SSLSOCKETINITIATOR_H
 #define FIX_SSLSOCKETINITIATOR_H
 
-#if (HAVE_SSL > 0)
-
-#ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 4290 )
+#ifndef HAVE_SSL
+#error SSLSocketInitiator.h included, but HAVE_SSL not defined
 #endif
 
-#include "Initiator.h"
-#include "SocketConnector.h"
-#include "SSLSocketConnection.h"
+#ifdef HAVE_SSL
 
-namespace FIX
-{
+#ifdef _MSC_VER
+#pragma warning(disable : 4503 4355 4786 4290)
+#endif
+
+#include "HostDetailsProvider.h"
+#include "Initiator.h"
+#include "SSLSocketConnection.h"
+#include "SocketConnector.h"
+
+namespace FIX {
+enum SSLHandshakeStatus {
+  SSL_HANDSHAKE_FAILED = 0,
+  SSL_HANDSHAKE_SUCCEDED = 1,
+  SSL_HANDSHAKE_IN_PROGRESS = 2
+};
 /// Socket implementation of Initiator.
-class SSLSocketInitiator : public Initiator, SocketConnector::Strategy
-{
+class SSLSocketInitiator : public Initiator, SocketConnector::Strategy {
 public:
-  SSLSocketInitiator( Application&, MessageStoreFactory&,
-                   const SessionSettings& ) EXCEPT ( ConfigError );
-  SSLSocketInitiator( Application&, MessageStoreFactory&,
-                   const SessionSettings&, LogFactory& ) EXCEPT ( ConfigError );
+  SSLSocketInitiator(Application &, MessageStoreFactory &, const SessionSettings &) EXCEPT(ConfigError);
+  SSLSocketInitiator(Application &, MessageStoreFactory &, const SessionSettings &, LogFactory &) EXCEPT(ConfigError);
 
   virtual ~SSLSocketInitiator();
 
   void setPassword(const std::string &pwd) { m_password.assign(pwd); }
 
-  void setCertAndKey(X509 *cert, RSA *key)
-  {
+  void setCertAndKey(X509 *cert, RSA *key) {
     m_cert = cert;
     m_key = key;
   }
 
-  int passwordHandleCallback(char *buf, size_t bufsize, int verify, void *job);
+  int passwordHandleCallback(char *buf, size_t bufsize, int verify);
 
-  static int passwordHandleCB(char *buf, int bufsize, int verify, void *job);
+  static int passwordHandleCB(char *buf, int bufsize, int verify, void *instance);
 
 private:
-  typedef std::map < socket_handle, SSLSocketConnection* > SocketConnections;
-  typedef std::map < SessionID, int > SessionToHostNum;
+  typedef std::map<socket_handle, SSLSocketConnection *> SocketConnections;
 
-  void onConfigure( const SessionSettings& ) EXCEPT ( ConfigError );
-  void onInitialize( const SessionSettings& ) EXCEPT ( RuntimeError );
+  void onConfigure(const SessionSettings &) EXCEPT(ConfigError);
+  void onInitialize(const SessionSettings &) EXCEPT(RuntimeError);
 
   void onStart();
-  bool onPoll( double timeout );
+  bool onPoll();
   void onStop();
 
-  void doConnect( const SessionID&, const Dictionary& d );
-  void onConnect( SocketConnector&, socket_handle);
-  void onWrite( SocketConnector&, socket_handle);
-  bool onData( SocketConnector&, socket_handle);
-  void onDisconnect( SocketConnector&, socket_handle);
-  void onError( SocketConnector& );
-  void onTimeout( SocketConnector& );
-  bool handshakeSSL(SSL* ssl);
-  void getHost( const SessionID&, const Dictionary&, std::string&, short&, std::string&, short& );
+  void doConnect(const SessionID &, const Dictionary &d);
+  void onConnect(SocketConnector &, socket_handle);
+  void onWrite(SocketConnector &, socket_handle);
+  bool onData(SocketConnector &, socket_handle);
+  void onDisconnect(SocketConnector &, socket_handle);
+  void onError(SocketConnector &);
+  void onTimeout(SocketConnector &);
+  void disconnectPendingSSLHandshakesThatTakeTooLong(time_t now);
+  SSLHandshakeStatus handshakeSSL(SSLSocketConnection *connection);
+  void handshakeSSLAndHandleConnection(SocketConnector &connector, socket_handle s);
 
-  SessionToHostNum m_sessionToHostNum;
   SocketConnector m_connector;
+
+  HostDetailsProvider m_hostDetailsProvider;
+  SocketConnections m_pendingSSLHandshakes;
   SocketConnections m_pendingConnections;
   SocketConnections m_connections;
   time_t m_lastConnect;
@@ -189,8 +196,8 @@ private:
   RSA *m_key;
 };
 /*! @} */
-}
+} // namespace FIX
 
 #endif
 
-#endif //FIX_SSLSOCKETINITIATOR_H
+#endif // FIX_SSLSOCKETINITIATOR_H

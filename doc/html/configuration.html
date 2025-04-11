@@ -388,6 +388,19 @@ If set, overrrides MillisecondsInTimeStamp.</td>
           <td>N</td>
         </tr>
 
+        <tr align="left" valign="middle">
+          <td><b>SendNextExpectedMsgSeqNum</b></td>
+
+          <td>Adds tag NextExpectedMsgSeqNum (789) to the Logon
+          message and enables session synchronisation at
+          initiation.</td>
+
+          <td>Y<br>
+          N</td>
+
+          <td>N</td>
+        </tr>
+
         <tr align="center" valign="middle">
           <td colspan="4" bgcolor="#DDDDDD"><h2>Validation</h2></td>
         </tr>
@@ -848,9 +861,9 @@ AppDataDictionary.FIX.4.4=FIX44.xml
           to resend a message. Useful for market data streams.</td>
 
           <td>Y<br>
-          Y</td>
+          N</td>
 
-          <td>N</td>
+          <td>Y</td>
         </tr>
 
         <tr align="center" valign="middle">

@@ -18,91 +18,81 @@
 ****************************************************************************/
 
 #ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 )
+#pragma warning(disable : 4503 4355 4786)
 #include "stdafx.h"
 #else
 #include "config.h"
 #endif
 
-#include <UnitTest++.h>
+#include <Log.h>
 #include <SessionState.h>
-#include <string>
 #include <sstream>
-#include "Log.h"
+#include <string>
+
+#include "catch_amalgamated.hpp"
 
 using namespace FIX;
 
-SUITE(SessionStateTests)
-{
-
-  class TestLog : public Log
-  {
+TEST_CASE("SessionStateTests") {
+  class TestLog : public Log {
   public:
-    void clear() {
-      events = 0;
-    }
-    void backup() {
-      eventsBackup = events;
-    }
-    void onIncoming( const std::string& ) {}
-    void onOutgoing( const std::string& ) {}
-    void onEvent( const std::string& ) {}
+    void clear() { events = 0; }
+    void backup() { eventsBackup = events; }
+    void onIncoming(const std::string &) {}
+    void onOutgoing(const std::string &) {}
+    void onEvent(const std::string &) {}
 
     int events = 0;
     int eventsBackup = 0;
   };
 
-  TEST(ClearSessionLog_StateLogNotNull_LogCleared)
-  {
+  SECTION("ClearSessionLog_StateLogNotNull_LogCleared") {
     SessionSettings settings;
     TestLog log;
     log.events = 5;
 
-    SessionState state;
+    SessionState state(UtcTimeStamp::now());
     state.log(&log);
 
     state.clear();
 
-    CHECK_EQUAL(0, log.events);
+    CHECK(0 == log.events);
   }
 
-  TEST(ClearSessionLog_StateLogIsNull_LogNotCleared)
-  {
+  SECTION("clearSessionLog_StateLogIsNull_LogNotCleared") {
     SessionSettings settings;
     TestLog log;
     log.events = 5;
 
-    SessionState state;
+    SessionState state(UtcTimeStamp::now());
 
     state.clear();
 
-    CHECK_EQUAL(5, log.events);
+    CHECK(5 == log.events);
   }
 
-  TEST(BackupSessionLog_StateLogNotNull_LogBackedUp)
-  {
+  SECTION("backupSessionLog_StateLogNotNull_LogBackedUp") {
     SessionSettings settings;
     TestLog log;
     log.events = 5;
 
-    SessionState state;
+    SessionState state(UtcTimeStamp::now());
     state.log(&log);
 
     state.backup();
 
-    CHECK_EQUAL(5, log.eventsBackup);
+    CHECK(5 == log.eventsBackup);
   }
 
-  TEST(BackupSessionLog_StateLogIsNull_LogBackedUp)
-  {
+  SECTION("backupSessionLog_StateLogIsNull_LogBackedUp") {
     SessionSettings settings;
     TestLog log;
     log.events = 5;
 
-    SessionState state;
+    SessionState state(UtcTimeStamp::now());
 
     state.backup();
 
-    CHECK_EQUAL(0, log.eventsBackup);
+    CHECK(0 == log.eventsBackup);
   }
 }

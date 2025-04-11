@@ -18,112 +18,101 @@
 ****************************************************************************/
 
 #ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 )
+#pragma warning(disable : 4503 4355 4786)
 #include "stdafx.h"
 #else
 #include "config.h"
 #endif
 
-#include <UnitTest++.h>
 #include <NullStore.h>
-#include <fix42/Logon.h>
-#include <fix42/Heartbeat.h>
-#include <fix42/TestRequest.h>
-#include <fix42/NewOrderSingle.h>
 #include <fix42/ExecutionReport.h>
+#include <fix42/Heartbeat.h>
+#include <fix42/Logon.h>
+#include <fix42/NewOrderSingle.h>
+#include <fix42/TestRequest.h>
+
+#include "catch_amalgamated.hpp"
 
 using namespace FIX;
 using namespace FIX42;
 
-SUITE(NullStoreTests)
-{
+static NullStore shared(UtcTimeStamp::now());
 
-struct sharedObjectFixture
-{
-  static NullStore object;
-};
+TEST_CASE("NullStoreTests") {
+  SECTION("setGet") {
+    NullStore object(UtcTimeStamp::now());
 
-NullStore sharedObjectFixture::object;
+    Logon logon;
+    logon.getHeader().setField(MsgSeqNum(1));
+    object.set(1, logon.toString());
 
-TEST( setGet )
-{
-  NullStore object;
+    Heartbeat heartbeat;
+    heartbeat.getHeader().setField(MsgSeqNum(2));
+    object.set(2, heartbeat.toString());
 
-  Logon logon;
-  logon.getHeader().setField( MsgSeqNum( 1 ) );
-  object.set( 1, logon.toString() );
+    NewOrderSingle newOrderSingle;
+    newOrderSingle.getHeader().setField(MsgSeqNum(3));
+    object.set(3, newOrderSingle.toString());
 
-  Heartbeat heartbeat;
-  heartbeat.getHeader().setField( MsgSeqNum( 2 ) );
-  object.set( 2, heartbeat.toString() );
+    std::vector<std::string> messages;
+    object.get(1, 3, messages);
+    CHECK(0U == messages.size());
 
-  NewOrderSingle newOrderSingle;
-  newOrderSingle.getHeader().setField( MsgSeqNum( 3 ) );
-  object.set( 3, newOrderSingle.toString() );
+    object.get(4, 6, messages);
+    CHECK(0U == messages.size());
 
-  std::vector < std::string > messages;
-  object.get( 1, 3, messages );
-  CHECK_EQUAL( 0U, messages.size() );
+    object.get(2, 6, messages);
+    CHECK(0U == messages.size());
+  }
 
-  object.get( 4, 6, messages );
-  CHECK_EQUAL( 0U, messages.size() );
+  SECTION("setGetWithQuote") {
+    NullStore object(UtcTimeStamp::now());
 
-  object.get( 2, 6, messages );
-  CHECK_EQUAL( 0U, messages.size() );
-}
+    ExecutionReport singleQuote;
+    singleQuote.setField(Text("Some Text"));
+    object.set(1, singleQuote.toString());
 
-TEST( setGetWithQuote )
-{
-  NullStore object;
+    ExecutionReport doubleQuote;
+    doubleQuote.setField(Text("\"Some Text\""));
+    object.set(2, doubleQuote.toString());
 
-  ExecutionReport singleQuote;
-  singleQuote.setField( Text("Some Text") );
-  object.set( 1, singleQuote.toString() );
+    ExecutionReport bothQuote;
+    bothQuote.setField(Text("'\"Some Text\"'"));
+    object.set(3, bothQuote.toString());
 
-  ExecutionReport doubleQuote;
-  doubleQuote.setField( Text("\"Some Text\"") );
-  object.set( 2, doubleQuote.toString() );
+    ExecutionReport escape;
+    escape.setField(Text("\\Some Text\\"));
+    object.set(4, escape.toString());
 
-  ExecutionReport bothQuote;
-  bothQuote.setField( Text("'\"Some Text\"'") );
-  object.set( 3, bothQuote.toString() );
+    std::vector<std::string> messages;
+    object.get(1, 4, messages);
+    CHECK(0U == messages.size());
+  }
 
-  ExecutionReport escape;
-  escape.setField( Text("\\Some Text\\") );
-  object.set( 4, escape.toString() );
+  SECTION("other") {
+    shared.setNextSenderMsgSeqNum(10);
+    CHECK(10 == shared.getNextSenderMsgSeqNum());
+    shared.setNextTargetMsgSeqNum(20);
+    CHECK(20 == shared.getNextTargetMsgSeqNum());
+    shared.incrNextSenderMsgSeqNum();
+    CHECK(11 == shared.getNextSenderMsgSeqNum());
+    shared.incrNextTargetMsgSeqNum();
+    CHECK(21 == shared.getNextTargetMsgSeqNum());
 
-  std::vector < std::string > messages;
-  object.get( 1, 4, messages );
-  CHECK_EQUAL( 0U, messages.size() );
-}
+    shared.setNextSenderMsgSeqNum(5);
+    shared.setNextTargetMsgSeqNum(6);
+  }
 
-TEST_FIXTURE( sharedObjectFixture, other )
-{
-  object.setNextSenderMsgSeqNum( 10 );
-  CHECK_EQUAL( 10, object.getNextSenderMsgSeqNum() );
-  object.setNextTargetMsgSeqNum( 20 );
-  CHECK_EQUAL( 20, object.getNextTargetMsgSeqNum() );
-  object.incrNextSenderMsgSeqNum();
-  CHECK_EQUAL( 11, object.getNextSenderMsgSeqNum() );
-  object.incrNextTargetMsgSeqNum();
-  CHECK_EQUAL( 21, object.getNextTargetMsgSeqNum() );
+  SECTION("reload") {
+    // use same session from previous test
+    CHECK(5 == shared.getNextSenderMsgSeqNum());
+    CHECK(6 == shared.getNextTargetMsgSeqNum());
+  }
 
-  object.setNextSenderMsgSeqNum( 5 );
-  object.setNextTargetMsgSeqNum( 6 );
-}
-
-TEST_FIXTURE( sharedObjectFixture, reload )
-{
-  // use same session from previous test
-  CHECK_EQUAL( 5, object.getNextSenderMsgSeqNum() );
-  CHECK_EQUAL( 6, object.getNextTargetMsgSeqNum() );
-}
-
-TEST_FIXTURE( sharedObjectFixture, refresh )
-{
-  // use same session from previous test
-  object.refresh();
-  CHECK_EQUAL( 5, object.getNextSenderMsgSeqNum() );
-  CHECK_EQUAL( 6, object.getNextTargetMsgSeqNum() );
-}
+  SECTION("refresh") {
+    // use same session from previous test
+    shared.refresh();
+    CHECK(5 == shared.getNextSenderMsgSeqNum());
+    CHECK(6 == shared.getNextTargetMsgSeqNum());
+  }
 }

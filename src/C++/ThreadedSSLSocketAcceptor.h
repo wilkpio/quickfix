@@ -123,52 +123,43 @@
 #endif
 
 #include "Acceptor.h"
-#include "ThreadedSSLSocketConnection.h"
 #include "Mutex.h"
+#include "ThreadedSSLSocketConnection.h"
 
-namespace FIX
-{
+namespace FIX {
 /// Threaded Socket implementation of Acceptor.
-class ThreadedSSLSocketAcceptor : public Acceptor
-{
+class ThreadedSSLSocketAcceptor : public Acceptor {
   friend class SocketConnection;
 
 public:
-  ThreadedSSLSocketAcceptor(Application &, MessageStoreFactory &,
-                            const SessionSettings &) EXCEPT (ConfigError);
-  ThreadedSSLSocketAcceptor(Application &, MessageStoreFactory &,
-                            const SessionSettings &,
-                            LogFactory &) EXCEPT (ConfigError);
+  ThreadedSSLSocketAcceptor(Application &, MessageStoreFactory &, const SessionSettings &) EXCEPT(ConfigError);
+  ThreadedSSLSocketAcceptor(Application &, MessageStoreFactory &, const SessionSettings &, LogFactory &)
+      EXCEPT(ConfigError);
 
   virtual ~ThreadedSSLSocketAcceptor();
 
   void setPassword(const std::string &pwd) { m_password.assign(pwd); }
 
-  int passwordHandleCallback(char *buf, size_t bufsize, int verify, void *job);
+  int passwordHandleCallback(char *buf, size_t bufsize, int verify);
 
-  static int passPhraseHandleCB(char *buf, int bufsize, int verify, void *job);
+  static int passPhraseHandleCB(char *buf, int bufsize, int verify, void *instance);
 
 private:
-  struct AcceptorThreadInfo
-  {
-    AcceptorThreadInfo(ThreadedSSLSocketAcceptor *pAcceptor, socket_handle socket,
-                       int port)
-        : m_pAcceptor(pAcceptor), m_socket(socket), m_port(port)
-    {
-    }
+  struct AcceptorThreadInfo {
+    AcceptorThreadInfo(ThreadedSSLSocketAcceptor *pAcceptor, socket_handle socket, int port)
+        : m_pAcceptor(pAcceptor),
+          m_socket(socket),
+          m_port(port) {}
 
     ThreadedSSLSocketAcceptor *m_pAcceptor;
     socket_handle m_socket;
     int m_port;
   };
 
-  struct ConnectionThreadInfo
-  {
-    ConnectionThreadInfo(ThreadedSSLSocketAcceptor *pAcceptor,
-                         ThreadedSSLSocketConnection *pConnection)
-        : m_pAcceptor(pAcceptor), m_pConnection(pConnection)
-    {
-    }
+  struct ConnectionThreadInfo {
+    ConnectionThreadInfo(ThreadedSSLSocketAcceptor *pAcceptor, ThreadedSSLSocketConnection *pConnection)
+        : m_pAcceptor(pAcceptor),
+          m_pConnection(pConnection) {}
 
     ThreadedSSLSocketAcceptor *m_pAcceptor;
     ThreadedSSLSocketConnection *m_pConnection;
@@ -176,18 +167,18 @@ private:
 
   bool readSettings(const SessionSettings &);
 
-  typedef std::set< socket_handle > Sockets;
-  typedef std::set< SessionID > Sessions;
-  typedef std::map< int, Sessions > PortToSessions;
-  typedef std::map< socket_handle, int > SocketToPort;
-  typedef std::pair< socket_handle, SSL * > SocketKey;
-  typedef std::map< SocketKey, thread_id > SocketToThread;
+  typedef std::set<socket_handle> Sockets;
+  typedef std::set<SessionID> Sessions;
+  typedef std::map<int, Sessions> PortToSessions;
+  typedef std::map<socket_handle, int> SocketToPort;
+  typedef std::pair<socket_handle, SSL *> SocketKey;
+  typedef std::map<SocketKey, thread_id> SocketToThread;
 
-  void onConfigure(const SessionSettings &) EXCEPT (ConfigError);
-  void onInitialize(const SessionSettings &) EXCEPT (RuntimeError);
+  void onConfigure(const SessionSettings &) EXCEPT(ConfigError);
+  void onInitialize(const SessionSettings &) EXCEPT(RuntimeError);
 
   void onStart();
-  bool onPoll(double timeout);
+  bool onPoll();
   void onStop();
 
   void addThread(SocketKey s, thread_id t);
@@ -210,7 +201,7 @@ private:
   std::string m_password;
 };
 /*! @} */
-}
+} // namespace FIX
 
 #endif // FIX_THREADEDSOCKETACCEPTOR_H
 

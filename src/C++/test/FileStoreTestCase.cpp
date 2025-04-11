@@ -18,145 +18,159 @@
 ****************************************************************************/
 
 #ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 )
+#pragma warning(disable : 4503 4355 4786)
 #include "stdafx.h"
 #else
 #include "config.h"
 #endif
 
-#include <UnitTest++.h>
-#include <TestHelper.h>
-#include <FileStore.h>
 #include "MessageStoreTestCase.h"
+#include "TestHelper.h"
+#include <FileStore.h>
+
+#include "catch_amalgamated.hpp"
 
 using namespace FIX;
 
-SUITE(FileStoreTests)
-{
+struct fileStoreFixture {
+  fileStoreFixture(bool resetBefore, bool reset)
+      : factory("store") {
+    if (resetBefore) {
+      deleteSession("SETGET", "TEST");
+    }
 
-struct fileStoreFixture
-{
-  fileStoreFixture( bool resetBefore, bool resetAfter )
-  : factory( "store" )
-  {
-    if( resetBefore )
-      deleteSession( "SETGET", "TEST" );
+    SessionID sessionID(BeginString("FIX.4.2"), SenderCompID("SETGET"), TargetCompID("TEST"));
 
-    SessionID sessionID( BeginString( "FIX.4.2" ),
-                         SenderCompID( "SETGET" ), TargetCompID( "TEST" ) );
+    object = factory.create(UtcTimeStamp::now(), sessionID);
 
-    object = factory.create( sessionID );
-
-    this->resetAfter = resetAfter;
+    this->resetAfter = reset;
   }
 
-  ~fileStoreFixture()
-  {
-    factory.destroy( object );
+  ~fileStoreFixture() {
+    factory.destroy(object);
 
-    if( resetAfter )
-      deleteSession( "SETGET", "TEST" );
+    if (resetAfter) {
+      deleteSession("SETGET", "TEST");
+    }
   }
 
   FileStoreFactory factory;
-  MessageStore* object;
+  MessageStore *object;
   bool resetAfter;
 };
 
-struct resetBeforeFileStoreFixture : fileStoreFixture
-{
-  resetBeforeFileStoreFixture() : fileStoreFixture( true, false ) {}
+struct resetBeforeFileStoreFixture : fileStoreFixture {
+  resetBeforeFileStoreFixture()
+      : fileStoreFixture(true, false) {}
 };
 
-struct resetAfterFileStoreFixture : fileStoreFixture
-{
-  resetAfterFileStoreFixture() : fileStoreFixture( false, true ) {}
+struct resetAfterFileStoreFixture : fileStoreFixture {
+  resetAfterFileStoreFixture()
+      : fileStoreFixture(false, true) {}
 };
 
-struct resetBeforeAndAfterFileStoreFixture : fileStoreFixture
-{
-  resetBeforeAndAfterFileStoreFixture() : fileStoreFixture( true, true ) {}
+struct resetBeforeAndAfterFileStoreFixture : fileStoreFixture {
+  resetBeforeAndAfterFileStoreFixture()
+      : fileStoreFixture(true, true) {}
 };
 
-struct noResetFileStoreFixture : fileStoreFixture
-{
-  noResetFileStoreFixture() : fileStoreFixture( false, false ) {}
+struct noResetFileStoreFixture : fileStoreFixture {
+  noResetFileStoreFixture()
+      : fileStoreFixture(false, false) {}
 };
 
-struct resetBeforeAndAfterWithTestFileManager : resetBeforeAndAfterFileStoreFixture
-{
-  resetBeforeAndAfterWithTestFileManager() : resetBeforeAndAfterFileStoreFixture() {
-    factory.destroy( object );
+struct resetBeforeAndAfterWithTestFileManager : resetBeforeAndAfterFileStoreFixture {
+  resetBeforeAndAfterWithTestFileManager()
+      : resetBeforeAndAfterFileStoreFixture() {
+    factory.destroy(object);
 
-    SessionID sessionID( BeginString( "FIX.4.2" ),
-        SenderCompID( "SETGET" ), TargetCompID( "TEST" ), "Test" );
+    SessionID sessionID(BeginString("FIX.4.2"), SenderCompID("SETGET"), TargetCompID("TEST"), "Test");
 
-    object = new FileStore( "store", sessionID);
+    object = new FileStore(UtcTimeStamp::now(), "store", sessionID);
   }
 };
 
-TEST_FIXTURE(resetBeforeAndAfterFileStoreFixture, setGet)
-{
-  CHECK_MESSAGE_STORE_SET_GET;
+TEST_CASE_METHOD(resetBeforeFileStoreFixture, "resetFileStoreTests"){
+    SECTION("setGet"){CHECK_MESSAGE_STORE_SET_GET}
+
+    SECTION("setGetUint64"){CHECK_MESSAGE_STORE_SET_GET_UINT64}
+
+    SECTION("setGetWithQuote"){CHECK_MESSAGE_STORE_SET_GET_WITH_QUOTE}
+
+    SECTION("other"){CHECK_MESSAGE_STORE_OTHER}
+
+    SECTION("otherUint64"){CHECK_MESSAGE_STORE_OTHER_UINT64}
+
+    SET_SEQUENCE_NUMBERS}
+
+TEST_CASE_METHOD(noResetFileStoreFixture, "noResetFileStoreTests") {
+  SECTION("reload"){CHECK_MESSAGE_STORE_RELOAD}
+
+  SECTION("refresh") {
+    CHECK_MESSAGE_STORE_RELOAD
+  }
 }
 
-TEST_FIXTURE(resetBeforeAndAfterFileStoreFixture, setGetWithQuote)
-{
-  CHECK_MESSAGE_STORE_SET_GET_WITH_QUOTE;
+TEST_CASE_METHOD(noResetFileStoreFixture, "FileStoreTests_3") {
+  SECTION("refresh") { CHECK_MESSAGE_STORE_REFRESH }
 }
 
-TEST_FIXTURE(resetBeforeFileStoreFixture, other)
-{
-  CHECK_MESSAGE_STORE_OTHER
+TEST_CASE_METHOD(resetAfterFileStoreFixture, "FileStoreTests_4") {
+  SECTION("reload") { CHECK_MESSAGE_STORE_RELOAD }
 }
 
-TEST_FIXTURE(noResetFileStoreFixture, reload)
-{
-  CHECK_MESSAGE_STORE_REFRESH
-}
+TEST_CASE_METHOD(resetBeforeAndAfterFileStoreFixture, "FileStoreTests_5") {
+  SECTION("FileStore_refresh_reset") {
+    // Init store with 3 messages
+    CHECK_MESSAGE_STORE_SET_GET
+    object->get(1, 10, messages);
 
-TEST_FIXTURE(resetAfterFileStoreFixture, refresh)
-{
-  CHECK_MESSAGE_STORE_RELOAD
-}
-
-TEST_FIXTURE(resetBeforeAndAfterWithTestFileManager, Refresh_DeleteFileStartup_NoException) {
-  try {
+    // Still 3 messages after refresh
     object->refresh();
-  } catch (Exception& e) {
-    CHECK(false);
-    throw e;
+    object->get(1, 10, messages);
+
+    // Should be 0 messages after reset
+    object->reset(UtcTimeStamp::now());
+    object->get(1, 10, messages);
   }
 }
 
-TEST_FIXTURE(resetBeforeAndAfterWithTestFileManager, Reset_DeleteFileStartup_NoException) {
-  try {
-    object->reset();
-  } catch (Exception& e) {
-    CHECK(false);
-    throw e;
+TEST_CASE_METHOD(resetBeforeAndAfterWithTestFileManager, "FileStoreTests_6") {
+  SECTION("Refresh_DeleteFileStartup_NoException") {
+    try {
+      object->refresh();
+    } catch (Exception &e) {
+      CHECK(false);
+      throw e;
+    }
   }
-}
 
-TEST_FIXTURE(resetBeforeAndAfterWithTestFileManager, FileStoreCreationTime) {
-  UtcTimeStamp timeStamp = object->getCreationTime();
-  UtcTimeStamp currentTimeStamp;
-  CHECK_EQUAL(currentTimeStamp.getYear(), timeStamp.getYear());
-}
+  SECTION("Reset_DeleteFileStartup_NoException") {
+    try {
+      object->reset(UtcTimeStamp::now());
+    } catch (Exception &e) {
+      CHECK(false);
+      throw e;
+    }
+  }
 
-TEST_FIXTURE(resetBeforeAndAfterWithTestFileManager, FileStoreFactory_FileStoreFromDictionary) {
-  SessionID sessionID( BeginString( "FIX.4.2" ),
-      SenderCompID( "SETGET" ), TargetCompID( "TEST" ), "Test" );
-  Dictionary dictionary;
-  dictionary.setString("ConnectionType", "acceptor");
-  dictionary.setString("FileStorePath", "store");
+  SECTION("FileStoreCreationTime") {
+    UtcTimeStamp timeStamp = object->getCreationTime();
+    UtcTimeStamp currentTimeStamp = UtcTimeStamp::now();
+    CHECK(currentTimeStamp.getYear() == timeStamp.getYear());
+  }
 
-  SessionSettings settings;
-  settings.set(sessionID, dictionary);
-  FileStoreFactory fileStoreFactory(settings);
+  SECTION("FileStoreFactory_FileStoreFromDictionary") {
+    SessionID sessionID(BeginString("FIX.4.2"), SenderCompID("SETGET"), TargetCompID("TEST"));
+    Dictionary dictionary;
+    dictionary.setString("ConnectionType", "acceptor");
+    dictionary.setString("FileStorePath", "store");
 
-  MessageStore* fileStore = fileStoreFactory.create(sessionID);
-  CHECK(fileStore != nullptr);
-}
+    SessionSettings settings;
+    settings.set(sessionID, dictionary);
+    FileStoreFactory fileStoreFactory(settings);
 
+    MessageStore *fileStore = fileStoreFactory.create(UtcTimeStamp::now(), sessionID);
+    CHECK(fileStore != nullptr);
+  }
 }

@@ -12,16 +12,13 @@
 
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 
+#include "config.h"
 #include <stdio.h>
-#include "../config_windows.h"
-
-#if defined(_STLP_MSVC)
-  #define HAVE_STLPORT 1
-#endif
 
 #if _MSC_VER >= 1300
-  #define TERMINATE_IN_STD 1
+#define TERMINATE_IN_STD 1
 #endif
 
 #define _WIN32_DCOM

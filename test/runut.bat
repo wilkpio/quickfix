@@ -1,6 +1,6 @@
+
 echo off
 if "%1" == "" goto usage
-if "%2" == "" goto usage
 
 if "%1" == "debug" goto debug:
 if "%1" == "release" goto release:
@@ -15,10 +15,10 @@ set DIR=release\ut
 goto start
 
 :start
-%DIR%\ut.exe -p %2 -f cfg\ut.cfg
+%DIR%\ut.exe --quickfix-config-file cfg\ut.cfg --quickfix-spec-path ..\spec
 goto quit
 
 :usage
-echo "Usage: runut [release | debug] [port]"
+echo "Usage: runut [release | debug]"
 
 :quit

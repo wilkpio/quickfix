@@ -18,7 +18,7 @@
 ****************************************************************************/
 
 #ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 )
+#pragma warning(disable : 4503 4355 4786)
 #include "stdafx.h"
 #else
 #include "config.h"
@@ -26,85 +26,69 @@
 
 #ifdef HAVE_ODBC
 
-#include <UnitTest++.h>
-#include <TestHelper.h>
-#include <OdbcStore.h>
 #include "MessageStoreTestCase.h"
+#include "TestHelper.h"
+#include <OdbcStore.h>
+
+#include "catch_amalgamated.hpp"
 
 using namespace FIX;
 
-SUITE(OdbcStoreTests)
-{
+struct odbcStoreFixture {
+  odbcStoreFixture(bool reset)
+      : factory(TestSettings::sessionSettings.get()) {
+    SessionID sessionID(BeginString("FIX.4.2"), SenderCompID("SETGET"), TargetCompID("TEST"));
 
-struct odbcStoreFixture
-{
-  odbcStoreFixture( bool reset )
-  : factory( TestSettings::sessionSettings.get() )
-  {
-    SessionID sessionID( BeginString( "FIX.4.2" ),
-                         SenderCompID( "SETGET" ), TargetCompID( "TEST" ) );
-
-    try
-    {
-      object = factory.create( sessionID );
-    }
-    catch( std::exception& e )
-    {
+    try {
+      object = factory.create(UtcTimeStamp::now(), sessionID);
+    } catch (std::exception &e) {
       std::cerr << e.what() << std::endl;
       throw;
     }
 
-    if( reset )
-      object->reset();
+    if (reset) {
+      object->reset(UtcTimeStamp::now());
+    }
 
-    this->resetAfter = resetAfter;
+    this->resetAfter = reset;
   }
 
-  ~odbcStoreFixture()
-  {
-    factory.destroy( object );
-  }
+  ~odbcStoreFixture() { factory.destroy(object); }
 
   OdbcStoreFactory factory;
-  MessageStore* object;
+  MessageStore *object;
   bool resetAfter;
 };
 
-struct noResetOdbcStoreFixture : odbcStoreFixture
-{
-  noResetOdbcStoreFixture() : odbcStoreFixture( false ) {}
+struct noResetOdbcStoreFixture : odbcStoreFixture {
+  noResetOdbcStoreFixture()
+      : odbcStoreFixture(false) {}
 };
 
-struct resetOdbcStoreFixture : odbcStoreFixture
-{
-  resetOdbcStoreFixture() : odbcStoreFixture( true ) {}
+struct resetOdbcStoreFixture : odbcStoreFixture {
+  resetOdbcStoreFixture()
+      : odbcStoreFixture(true) {}
 };
 
-TEST_FIXTURE(resetOdbcStoreFixture, setGet)
-{
-  CHECK_MESSAGE_STORE_SET_GET;
-}
+TEST_CASE_METHOD(resetOdbcStoreFixture, "resetOdbcStoreTests"){
+    SECTION("setGet"){CHECK_MESSAGE_STORE_SET_GET}
 
-TEST_FIXTURE(resetOdbcStoreFixture, setGetWithQuote)
-{
-  //CHECK_MESSAGE_STORE_SET_GET_WITH_QUOTE;
-}
+    SECTION("setGetWithQuote"){CHECK_MESSAGE_STORE_SET_GET_WITH_QUOTE}
 
-TEST_FIXTURE(resetOdbcStoreFixture, other)
-{
-  CHECK_MESSAGE_STORE_OTHER
-}
+    SECTION("setGetUint64"){CHECK_MESSAGE_STORE_SET_GET_UINT64}
 
-TEST_FIXTURE(noResetOdbcStoreFixture, reload)
-{
-  CHECK_MESSAGE_STORE_RELOAD
-}
+    SECTION("other"){CHECK_MESSAGE_STORE_OTHER}
 
-TEST_FIXTURE(noResetOdbcStoreFixture, refresh)
-{
-  CHECK_MESSAGE_STORE_RELOAD
-}
+    SECTION("otherUint64"){CHECK_MESSAGE_STORE_OTHER_UINT64}
 
+    SET_SEQUENCE_NUMBERS}
+
+TEST_CASE_METHOD(noResetOdbcStoreFixture, "noResetOdbcStoreTests") {
+  SECTION("reload"){CHECK_MESSAGE_STORE_RELOAD}
+
+  SECTION("refresh") {
+    CHECK_MESSAGE_STORE_RELOAD
+  }
 }
 
 #endif

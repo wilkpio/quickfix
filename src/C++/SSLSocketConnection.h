@@ -117,23 +117,26 @@
 #ifndef FIX_SSLSOCKETCONNECTION_H
 #define FIX_SSLSOCKETCONNECTION_H
 
-#if (HAVE_SSL > 0)
-
-#ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 4290 )
+#ifndef HAVE_SSL
+#error SSLSocketConnection.h included, but HAVE_SSL not defined
 #endif
 
+#ifdef HAVE_SSL
+
+#ifdef _MSC_VER
+#pragma warning(disable : 4503 4355 4786 4290)
+#endif
+
+#include "Mutex.h"
 #include "Parser.h"
 #include "Responder.h"
 #include "SessionID.h"
 #include "SocketMonitor.h"
 #include "Utility.h"
 #include "UtilitySSL.h"
-#include "Mutex.h"
 #include <set>
 
-namespace FIX
-{
+namespace FIX {
 class SSLSocketAcceptor;
 class SocketServer;
 class SocketConnector;
@@ -141,49 +144,56 @@ class SSLSocketInitiator;
 class Session;
 
 /// Encapsulates a socket file descriptor (single-threaded).
-class SSLSocketConnection : Responder
-{
+class SSLSocketConnection : Responder {
 public:
   typedef std::set<SessionID> Sessions;
 
-  SSLSocketConnection( socket_handle s, SSL *ssl, Sessions sessions, SocketMonitor* pMonitor );
-  SSLSocketConnection( SSLSocketInitiator&, const SessionID&, socket_handle, SSL *, SocketMonitor* );
+  SSLSocketConnection(socket_handle s, SSL *ssl, Sessions sessions, SocketMonitor *pMonitor);
+  SSLSocketConnection(SSLSocketInitiator &, const SessionID &, socket_handle, SSL *, SocketMonitor *);
   virtual ~SSLSocketConnection();
 
   socket_handle getSocket() const { return m_socket; }
-  Session* getSession() const { return m_pSession; }
+  Session *getSession() const { return m_pSession; }
 
-  bool read( SocketConnector& s );
-  bool read( SSLSocketAcceptor&, SocketServer& );
+  bool read(SocketConnector &s);
+  bool read(SSLSocketAcceptor &, SocketServer &);
   bool processQueue();
 
-  void signal()
-  {
-    Locker l( m_mutex );
-    if( m_sendQueue.size() == 1 )
-      m_pMonitor->signal( m_socket );
+  void signal() {
+    Locker l(m_mutex);
+    if (m_sendQueue.size() == 1) {
+      m_pMonitor->signal(m_socket);
+    }
   }
 
-  void unsignal()
-  {
-    Locker l( m_mutex );
-    if( m_sendQueue.size() == 0 )
-      m_pMonitor->unsignal( m_socket );
+  void subscribeToSocketWriteAvailableEvents() { m_pMonitor->signal(m_socket); }
+
+  void unsignal() {
+    Locker l(m_mutex);
+    if (m_sendQueue.size() == 0) {
+      m_pMonitor->unsignal(m_socket);
+    }
   }
+
+  void setHandshakeStartTime(time_t time) { m_handshakeStartTime = time; }
+
+  int getSecondsFromHandshakeStart(time_t now) { return static_cast<int>(now - m_handshakeStartTime); }
 
   void onTimeout();
 
   SSL *sslObject() { return m_ssl; }
 
+  bool didProcessQueueRequestToRead() const;
+  bool didReadFromSocketRequestToWrite() const;
+
 private:
-  typedef std::deque<std::string, ALLOCATOR<std::string> >
-    Queue;
+  typedef std::deque<std::string, ALLOCATOR<std::string>> Queue;
 
   bool isValidSession();
-  void readFromSocket() EXCEPT ( SocketRecvFailed );
-  bool readMessage( std::string& msg );
-  void readMessages( SocketMonitor& s );
-  bool send( const std::string& );
+  void readFromSocket() EXCEPT(SocketRecvFailed);
+  bool readMessage(std::string &msg);
+  void readMessages(SocketMonitor &s);
+  bool send(const std::string &);
   void disconnect();
 
   socket_handle m_socket;
@@ -194,13 +204,18 @@ private:
   Queue m_sendQueue;
   unsigned m_sendLength;
   Sessions m_sessions;
-  Session* m_pSession;
-  SocketMonitor* m_pMonitor;
-  Mutex m_mutex;
+  Session *m_pSession;
+  SocketMonitor *m_pMonitor;
+  mutable Mutex m_mutex;
+#ifdef _MSC_VER
   fd_set m_fds;
+#endif
+  bool m_processQueueNeedsToReadData = false;
+  bool m_readFromSocketNeedsToWriteData = false;
+  time_t m_handshakeStartTime = 0;
 };
-}
+} // namespace FIX
 
 #endif
 
-#endif //FIX_SSLSOCKETCONNECTION_H
+#endif // FIX_SSLSOCKETCONNECTION_H

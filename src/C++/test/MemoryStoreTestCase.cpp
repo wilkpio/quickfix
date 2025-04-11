@@ -18,35 +18,59 @@
 ****************************************************************************/
 
 #ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 )
+#pragma warning(disable : 4503 4355 4786)
 #include "stdafx.h"
 #else
 #include "config.h"
 #endif
 
-#include <UnitTest++.h>
+#include "MessageStoreTestCase.h"
+#include "TestHelper.h"
 #include <MessageStore.h>
 
-namespace FIX
-{
+#include "catch_amalgamated.hpp"
 
-struct memoryStoreFixture
-{
-  memoryStoreFixture()
-  {
-    SessionID sessionID( BeginString( "FIX.4.2" ),
-                         SenderCompID( "SETGET" ), TargetCompID( "TEST" ) );
+using namespace FIX;
 
-    object = factory.create( sessionID );
+struct memoryStoreFixture {
+  memoryStoreFixture(bool reset) {
+    SessionID sessionID(BeginString("FIX.4.2"), SenderCompID("SETGET"), TargetCompID("TEST"));
+
+    try {
+      object = factory.create(UtcTimeStamp::now(), sessionID);
+    } catch (std::exception &e) {
+      std::cerr << e.what() << std::endl;
+      throw;
+    }
+
+    if (reset) {
+      object->reset(UtcTimeStamp::now());
+    }
+
+    this->resetAfter = reset;
   }
 
-  ~memoryStoreFixture()
-  {
-    factory.destroy( object );
-  }
+  ~memoryStoreFixture() { factory.destroy(object); }
 
   MemoryStoreFactory factory;
-  MessageStore* object;
+  MessageStore *object;
+  bool resetAfter;
 };
 
+struct noResetMemoryStoreFixture : memoryStoreFixture {
+  noResetMemoryStoreFixture()
+      : memoryStoreFixture(false) {}
+};
+
+struct resetMemoryStoreFixture : memoryStoreFixture {
+  resetMemoryStoreFixture()
+      : memoryStoreFixture(true) {}
+};
+
+TEST_CASE_METHOD(resetMemoryStoreFixture, "resetMemoryStoreTests") {
+  SECTION("setGet") { CHECK_MESSAGE_STORE_SET_GET; }
+
+  SECTION("setGetWithQuote") { CHECK_MESSAGE_STORE_SET_GET_WITH_QUOTE; }
+
+  SECTION("other") { CHECK_MESSAGE_STORE_OTHER }
 }

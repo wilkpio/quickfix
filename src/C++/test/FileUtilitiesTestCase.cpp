@@ -18,34 +18,30 @@
 ****************************************************************************/
 
 #ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 )
+#pragma warning(disable : 4503 4355 4786)
 #include "stdafx.h"
 #else
 #include "config.h"
 #endif
 
-#include <UnitTest++.h>
 #include <Utility.h>
+
+#include "catch_amalgamated.hpp"
 
 using namespace FIX;
 
-SUITE(FileUtilitiesTests)
-{
-
-TEST(separator)
-{
+TEST_CASE("FileUtilitiesTests") {
+  SECTION("separator") {
 #ifdef _MSC_VER
-  CHECK_EQUAL( "\\", file_separator() );
+    CHECK("\\" == file_separator());
 #else
-  CHECK_EQUAL( "/", file_separator() );
+    CHECK("/" == file_separator());
 #endif
-}
+  }
 
-TEST(appendpath)
-{
-  CHECK_EQUAL( ("path" + file_separator() + "file"), file_appendpath("path", "file") );
-  CHECK_EQUAL( "path/file", file_appendpath("path/", "file") );
-  CHECK_EQUAL( "path\\file", file_appendpath("path\\", "file") );
-}
-
+  SECTION("appendpath") {
+    CHECK(("path" + file_separator() + "file") == file_appendpath("path", "file"));
+    CHECK("path/file" == file_appendpath("path/", "file"));
+    CHECK("path\\file" == file_appendpath("path\\", "file"));
+  }
 }

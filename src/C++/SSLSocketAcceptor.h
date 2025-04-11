@@ -117,58 +117,59 @@
 #ifndef FIX_SSLSOCKETACCEPTOR_H
 #define FIX_SSLSOCKETACCEPTOR_H
 
-#if (HAVE_SSL > 0)
+#ifndef HAVE_SSL
+#error SSLSocketAcceptor.h included, but HAVE_SSL not defined
+#endif
+
+#ifdef HAVE_SSL
 
 #ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 4290 )
+#pragma warning(disable : 4503 4355 4786 4290)
 #endif
 
 #include "Acceptor.h"
-#include "SocketServer.h"
 #include "SSLSocketConnection.h"
+#include "SocketServer.h"
 
-namespace FIX
-{
+namespace FIX {
 /// Socket implementation of Acceptor.
-class SSLSocketAcceptor : public Acceptor, SocketServer::Strategy
-{
+class SSLSocketAcceptor : public Acceptor, SocketServer::Strategy {
   friend class SSLSocketConnection;
+
 public:
-  SSLSocketAcceptor( Application&, MessageStoreFactory&,
-                  const SessionSettings& ) EXCEPT ( ConfigError );
-  SSLSocketAcceptor( Application&, MessageStoreFactory&,
-                  const SessionSettings&, LogFactory& ) EXCEPT ( ConfigError );
+  SSLSocketAcceptor(Application &, MessageStoreFactory &, const SessionSettings &) EXCEPT(ConfigError);
+  SSLSocketAcceptor(Application &, MessageStoreFactory &, const SessionSettings &, LogFactory &) EXCEPT(ConfigError);
 
   virtual ~SSLSocketAcceptor();
 
   void setPassword(const std::string &pwd) { m_password.assign(pwd); }
 
-  int passwordHandleCallback(char *buf, size_t bufsize, int verify, void *job);
+  int passwordHandleCallback(char *buf, size_t bufsize, int verify);
 
-  static int passPhraseHandleCB(char *buf, int bufsize, int verify, void *job);
+  static int passPhraseHandleCB(char *buf, int bufsize, int verify, void *instance);
 
 private:
-  bool readSettings( const SessionSettings& );
+  bool readSettings(const SessionSettings &);
 
-  typedef std::set < SessionID > Sessions;
-  typedef std::map < int, Sessions > PortToSessions;
-  typedef std::map < socket_handle, SSLSocketConnection* > SocketConnections;
+  typedef std::set<SessionID> Sessions;
+  typedef std::map<int, Sessions> PortToSessions;
+  typedef std::map<socket_handle, SSLSocketConnection *> SocketConnections;
 
-  void onConfigure( const SessionSettings& ) EXCEPT ( ConfigError );
-  void onInitialize( const SessionSettings& ) EXCEPT ( RuntimeError );
+  void onConfigure(const SessionSettings &) EXCEPT(ConfigError);
+  void onInitialize(const SessionSettings &) EXCEPT(RuntimeError);
 
   void onStart();
-  bool onPoll( double timeout );
+  bool onPoll();
   void onStop();
 
-  void onConnect( SocketServer&, socket_handle, socket_handle);
-  void onWrite( SocketServer&, socket_handle);
-  bool onData( SocketServer&, socket_handle);
-  void onDisconnect( SocketServer&, socket_handle);
-  void onError( SocketServer& );
-  void onTimeout( SocketServer& );
+  void onConnect(SocketServer &, socket_handle, socket_handle);
+  void onWrite(SocketServer &, socket_handle);
+  bool onData(SocketServer &, socket_handle);
+  void onDisconnect(SocketServer &, socket_handle);
+  void onError(SocketServer &);
+  void onTimeout(SocketServer &);
 
-  SocketServer* m_pServer;
+  SocketServer *m_pServer;
   PortToSessions m_portToSessions;
   SocketConnections m_connections;
 
@@ -179,7 +180,7 @@ private:
   std::string m_password;
 };
 /*! @} */
-}
+} // namespace FIX
 
 #endif
-#endif //FIX_SSLSOCKETACCEPTOR_H
+#endif // FIX_SSLSOCKETACCEPTOR_H

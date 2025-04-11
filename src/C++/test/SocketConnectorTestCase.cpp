@@ -18,32 +18,30 @@
 ****************************************************************************/
 
 #ifdef _MSC_VER
-#pragma warning( disable : 4503 4355 4786 )
+#pragma warning(disable : 4503 4355 4786)
 #include "stdafx.h"
 #else
 #include "config.h"
 #endif
 
-#include <UnitTest++.h>
+#include "TestHelper.h"
 #include <SocketConnector.h>
 #include <SocketServer.h>
-#include "TestHelper.h"
 #ifdef _MSC_VER
 #include <stdlib.h>
 #endif
 
+#include "catch_amalgamated.hpp"
+
 using namespace FIX;
 
-SUITE(SocketConnectorTests)
-{
-
-TEST(accept)
-{
-  SocketConnector object;
-  SocketServer server( 0 );
-  socket_handle socket = server.add( TestSettings::port, true, true );
-  CHECK( object.connect( "127.0.0.1", TestSettings::port, false, 1024, 1024 ) );
-  CHECK( server.accept(socket) );
-}
-
+TEST_CASE("SocketConnectorTests") {
+  SECTION("accept") {
+    SocketConnector object;
+    SocketServer server(0);
+    socket_handle socket = server.add(TestSettings::port, true, true);
+    CHECK(object.connect("127.0.0.1", TestSettings::port, false, 1024, 1024));
+    CHECK(server.accept(socket));
+    server.close();
+  }
 }
